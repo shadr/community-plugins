@@ -26,7 +26,7 @@ local systemStatsCheckInterval = cfg("system_stats_check_interval")
 local completedCommands = 0
 
 local localHashCmd  = "nixos-version --hash 2> /dev/null | cut -c -7"
-local remoteHashCmd = "git ls-remote https://github.com/NixOS/nixpkgs " .. branch .. " 2>/dev/null | cut -c 1-7"
+local remoteHashCmd = "sleep 5 && git ls-remote https://github.com/NixOS/nixpkgs " .. branch .. " 2>/dev/null | cut -c 1-7"
 local nixosGenerationsCmd = "nixos-rebuild list-generations | tail -n +2 | wc -l"
 local nixosCurrentGenCmd = "nixos-rebuild list-generations | grep True | awk '{print $1}'"
 local hmGenerationsCmd = "home-manager generations | wc -l"
