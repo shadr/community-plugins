@@ -17,6 +17,13 @@ local SERVICE = "oldirtty/color_picker:service"
 local swatch_radius = noctalia.getConfig("swatch-radius")
 local tr_color_picker = noctalia.tr("color_picker")
 
+-- Set right before closing the panel to hand off to hyprpicker (so the
+-- panel doesn't cover the screen area being sampled). onClose() checks
+-- this to skip committing the stale selection on that technical close,
+-- and the selectedColor watch checks it to reopen the panel once the
+-- service reports a result -- instead of just re-rendering a closed panel.
+local waitingForPanelPick = false
+
 --==============================================
 -- TRANSLATION HELPER
 --==============================================
@@ -354,10 +361,14 @@ end
 -- CALLBACKS: picking (delegates to the service)
 --==============================================
 
--- Panel's own pick button: asks the service to pick and update the
--- selection only. No history commit until the panel closes.
+-- Panel's own pick button: just closes the panel (so it doesn't cover the
+-- area being sampled). The actual pick is triggered from onClose(), which
+-- only fires once the close animation has actually finished -- firing the
+-- pick here instead would race the animation and hyprpicker would freeze
+-- mid-transition.
 function onPickClickedFromPanel()
-  sendToService("pick-panel")
+	waitingForPanelPick = true
+	panel.close()
 end
 
 function onNativePickerClicked()
@@ -368,18 +379,43 @@ function onCloseClicked()
   panel.close()
 end
 
--- Panel closed (any path: close button, Esc, click outside). Commits
--- whatever is currently selected to the service's history.
+-- Panel closed. Two cases:
+-- - Technical close to hand off to hyprpicker (waitingForPanelPick): ask
+--   the service to pick now that the close animation is done, then wait
+--   for the selectedColor watch to reopen the panel. No commit yet --
+--   the selection isn't final until the panel closes for real.
+--
+-- - Real close (close button, Esc, click outside): commit whatever is
+--   currently selected to the service's history.
 function onClose()
-  local hex = getSelectedColor()
-  if hex == nil then return end
+	if waitingForPanelPick then
+		sendToService("pick-panel")
+		return
+	end
 
-  local payload = hex .. ":" .. tostring(getSelectedOpacity())
-  sendToService("commit", payload)
+	local hex = getSelectedColor()
+	if hex == nil then
+		return
+	end
+
+	local payload = hex .. ":" .. tostring(getSelectedOpacity())
+	sendToService("commit", payload)
 end
 
 function onOpen(context)
-  noctalia.state.watch("selectedColor", function() render() end)
-  noctalia.state.watch("colorHistory", function() render() end)
-  render()
+	-- Wait user pick a color to render panel
+	-- when launching hyprpicker from panel's button
+	noctalia.state.watch("selectedColor", function()
+		if waitingForPanelPick then
+			waitingForPanelPick = false
+			noctalia.togglePanel("oldirtty/color_picker:panel")
+		else
+			render()
+		end
+	end)
+
+	noctalia.state.watch("colorHistory", function()
+		render()
+	end)
+	render()
 end
