@@ -116,6 +116,7 @@ The `tags` in `plugin.toml` are used for catalog search. Tags must be lowercase 
   `hardware`, `indicator`, `language`, `media`, `music`, `network`, `privacy`, `productivity`, `recording`, `system`,
   `theming`, `time`, `utility`, `video`, `wallpaper`
 - Compositors: `hyprland`, `labwc`, `mangowc`, `niri`, `sway`
+- Distributions: `arch`, `debian`, `fedora`, `gentoo`, `nixos`, `opensuse`, `void`
 
 If your plugin does not fit any existing tag, propose a new one in your pull request rather than inventing a tag in
 the manifest.
