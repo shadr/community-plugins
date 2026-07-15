@@ -17,5 +17,5 @@
  - Optionally `home-manager`
 
 ## Notes
- - You need to change the update command in the setting
+ - You need to add the update command in the setting first
  - By default, clean command executes `nix-collect-garbage -d`, you can change it too!
