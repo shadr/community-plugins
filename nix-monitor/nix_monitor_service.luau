@@ -34,9 +34,10 @@ end
 
 -- Vars
 local branch = cfg("branch")
-local updateCheckInterval = cfg("check_interval")
-local checkDurationThreshold = cfg("check_duration_threshold")
+local updateCheckInterval = cfg("update_check_interval")
+local updateCheckDurationThreshold = cfg("update_check_duration_threshold")
 local systemStatsCheckInterval = cfg("system_stats_check_interval")
+local systemStatsCheckDurationThreshold = cfg("system_stats_check_duration_threshold")
 local stateDir = "/tmp/nix-monitor"
 local remoteHashFile = stateDir .. "/remoteHash"
 local storeSizeFile = stateDir .. "/storeSize"
@@ -66,7 +67,8 @@ setState("isRemoteCheckRunning", false)
 setState("isUpdateAvailable", false)
 setState("lastGenerationsCheckTime", 0)
 setState("isSystemStatsCheckRunning", false)
-setState("lastSystemStatsCheckTime", 0)
+setState("lastSystemStatsCheckTime", os.time())
+setState("lastSystemStatsCheckRunTime", os.time())
 setState("hasHomeManager", noctalia.commandExists("home-manager"))
 setState("nixosGenerations", "•••")
 setState("nixosCurrentGen", "•••")
@@ -169,7 +171,7 @@ function checkSystemStats()
     end
 
     setState("isSystemStatsCheckRunning", true)
-    setState("lastSystemStatsCheckTime", os.time())
+    setState("lastSystemStatsCheckRunTime", os.time())
 
     -- Sleep 0 to trigger noctalia calling /bin/sh
     noctalia.runAsync(`sleep 0 && {storeSizeCmd} > {storeSizeFile} & echo $! > {storePidFile}`)
@@ -193,6 +195,7 @@ function checkSystemStatsFile()
 
     if success then
         setState("isSystemStatsCheckRunning", false)
+        setState("lastSystemStatsCheckTime", os.time())
         noctalia.removeFile(storePidFile)
         noctalia.removeFile(closurePidFile)
     end
@@ -207,6 +210,7 @@ end
 -- Init
 checkLocalHash()
 checkRemoteHash(10)
+checkSystemStats()
 
 -- Command watcher
 watchState("command", function(command)
@@ -243,7 +247,7 @@ function update()
         checkRemoteStatus()
 
         -- Remote check timeout
-        if (os.time() - getState("lastRemoteCheckRunTime")) >= 60 * checkDurationThreshold then
+        if (os.time() - getState("lastRemoteCheckRunTime")) >= 60 * updateCheckDurationThreshold then
             cancelRemoteCheck()
         end
     end
@@ -274,6 +278,11 @@ function update()
 
     if getState("isSystemStatsCheckRunning") then
         checkSystemStatsFile()
+
+        -- System stats check timeout
+        if (os.time() - getState("lastSystemStatsCheckRunTime")) >= 60 * systemStatsCheckDurationThreshold then
+            cancelSystemCheck()
+        end
     end
 end
 

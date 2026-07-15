@@ -86,18 +86,18 @@ label_key   = "setting.widget.unknown_color.label"
 default     = "on_surface"
 
 [[setting]]
-key             = "check_interval"
+key             = "update_check_interval"
 type            = "int"
-label_key       = "setting.check_interval.label"
-description_key = "setting.check_interval.description"
+label_key       = "setting.update_check_interval.label"
+description_key = "setting.update_check_interval.description"
 default         = 60
 min             = 10
 
 [[setting]]
-key             = "check_duration_threshold"
+key             = "update_check_duration_threshold"
 type            = "int"
-label_key       = "setting.check_duration_threshold.label"
-description_key = "setting.check_duration_threshold.description"
+label_key       = "setting.update_check_duration_threshold.label"
+description_key = "setting.update_check_duration_threshold.description"
 default         = 5
 min             = 1
 max             = 30
@@ -109,6 +109,15 @@ label_key       = "setting.system_stats_check_interval.label"
 description_key = "setting.system_stats_check_interval.description"
 default         = 10
 min             = 5
+
+[[setting]]
+key             = "system_stats_check_duration_threshold"
+type            = "int"
+label_key       = "setting.system_stats_check_duration_threshold.label"
+description_key = "setting.system_stats_check_duration_threshold.description"
+default         = 5
+min             = 1
+max             = 30
 
 [[setting]]
 key             = "show_update_check_notification"
