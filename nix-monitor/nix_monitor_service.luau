@@ -26,7 +26,7 @@ function killWithPidFile(file)
         local pid = noctalia.string.trim(noctalia.readFile(file))
 
         if type(pid) == "string" and pid ~= "" then
-            noctalia.runAsync(`pkill -9 -P {pid}`)
+            noctalia.runAsync(`pkill -9 -P {pid} && kill -9 {pid}`)
         end
         noctalia.removeFile(file)
     end
