@@ -37,7 +37,6 @@ Panel controls:
 - **Left-click** the bar widget to open the panel.
 - **Right-click** the bar widget to sample a color directly, without opening the panel.
 - Inside the panel, click any recent color swatch to select it, or edit the HEX/RGB/HSL fields directly or click the bigger swatch to open color picker dialog.
-- Colors picked during a panel session are added to history when the panel closes.
 
 ## Settings
 

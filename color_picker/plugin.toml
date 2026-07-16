@@ -3,12 +3,11 @@ id = "oldirtty/color_picker"
 name = "Color Picker"
 description  = "Pick a color from your screen with hyprpicker."
 license = "MIT"
-version = "1.0.1"
+version = "1.0.2"
 min_noctalia = "5.0.0"
 icon = "palette"
 dependencies = ["hyprpicker"]
-tags = ["theming", "utility", "bar", "panel"] 
-
+tags = ["theming", "utility", "bar", "panel"]
 
 [[setting]]
 key = "hyprpicker-format"

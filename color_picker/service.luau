@@ -8,12 +8,15 @@
 --==============================================
 -- CONSTANTS
 --==============================================
-local MAX_HISTORY = 7 -- selected color (index 1) + 6 recent
-local STATE_DIR = "~/.local/state/noctalia/plugin-cache/color_picker"
+local MAX_HISTORY = 6
+local STATE_DIR = "~/.local/state/noctalia/plugin-cache/community/color_picker"
 local HISTORY_FILE = STATE_DIR .. "/history.json"
-
+local SELECTED_FILE = STATE_DIR .. "/selected.json"
 local tr_color_picker = noctalia.tr("color_picker")
 
+--==============================================
+-- TRANSLATION HELPER
+--==============================================
 local function tr(key: string, subst: table?): string
   if subst then
     return noctalia.tr(key, subst)
@@ -103,7 +106,7 @@ end
 -- itself for pure-UI interactions (history swatch click, field edit,
 -- opacity slider) that don't touch hyprpicker or disk.
 --
--- colorHistory: persisted list (index 1 = most recently committed color).
+-- colorHistory: persisted list.
 -- Only mutated by pushCurrentColor(), called on immediate-commit picks
 -- (widget right-click) and on "commit" (panel close).
 --==============================================
@@ -153,6 +156,27 @@ local function saveHistoryToDisk()
   end
 end
 
+local function loadSelectedFromDisk()
+    local content = noctalia.readFile(SELECTED_FILE)
+    if content == nil or content == "" then return end
+    
+    local decoded = noctalia.json.decode(content)
+    if type(decoded) ~= "table" or decoded.hex == nil then return end
+    
+    setSelected(decoded.hex, decoded.opacity or 1)
+end
+
+local function saveSelectedToDisk()
+    local hex = noctalia.state.get("selectedColor")
+    if hex == nil then return end
+    
+    local opacity = tonumber(noctalia.state.get("selectedOpacity")) or 1
+    local encoded = noctalia.json.encode({ hex = hex, opacity = opacity })
+    if encoded ~= nil then
+        noctalia.writeFile(SELECTED_FILE, encoded)
+    end
+end
+
 --==============================================
 -- PICKING
 --==============================================
@@ -198,89 +222,77 @@ end
 --                 history, saves to disk right away.
 -- "pick-panel"  - panel's own pick button. Picks and updates the selection
 --                 only; history/disk are untouched until "commit".
--- "commit"      - panel is closing. payload = "<hex>:<opacity>", the
---                 selection at close time. Pushes it to history and saves.
+-- "push-to-history" - saves the initial panel color to history when it's first changed.
+-- "save-selected"   - panel is closing for real. Saves the current draft to SELECTED_FILE.
 --==============================================
 
 local function handlePick()
-  runPicker(function(hex, copyText)
-    if hex == nil then return end
+    runPicker(function(hex, copyText)
+        if hex == nil then return end
 
-    setSelected(hex, 1)
-    pushCurrentColor(hex, 1)
-    saveHistoryToDisk()
-    noctalia.notify(tr_color_picker, tr("color_picked", { color = copyText }))
-  end)
+        setSelected(hex, 1)
+        pushCurrentColor(hex, 1)
+        saveHistoryToDisk()
+        noctalia.notify(tr_color_picker, tr("color_picked", { color = copyText }))
+    end)
 end
 
 local function handlePickFromPanel()
-  runPicker(function(hex, copyText)
+    runPicker(function(hex, copyText)
+        if hex == nil then return end
+
+        setSelected(hex, 1)
+        noctalia.notify(tr_color_picker, tr("color_picked", { color = copyText }))
+    end)
+end
+
+local function handlePushToHistory(payload: string?)
+    if payload == nil then return end
+
+    local hex, opacityStr = payload:match("^(#%x%x%x%x%x%x):([%d%.]+)$")
     if hex == nil then return end
 
-    setSelected(hex, 1)
-    noctalia.notify(tr_color_picker, tr("color_picked", { color = copyText }))
-  end)
-end
-
-local function handleCommit(payload: string?)
-  if payload == nil then return end
-
-  local hex, opacityStr = payload:match("^(#%x%x%x%x%x%x):([%d%.]+)$")
-  if hex == nil then return end
-
-  pushCurrentColor(hex, tonumber(opacityStr) or 1)
-  saveHistoryToDisk()
-end
-
--- Opens Noctalia's native color picker dialog (canvas + hue slider).
--- Only updates the selection, same as the hyprpicker panel button --
--- history commit still happens on panel close, not here. The panel
--- re-renders on its own via noctalia.state.watch("selectedColor", ...).
-local function handleNativePicker()
-  local current = noctalia.state.get("selectedColor") or "#FFFFFF"
-  local accepted = noctalia.openColorPicker(current, function(color)
-    if color == nil then
-      return
-    end
-
-    local copyText = color
-    if noctalia.getConfig("hyprpicker-format") == "rgb" then
-      copyText = formatRgb(color)
-    elseif noctalia.getConfig("hyprpicker-lowercase") then
-      copyText = color:lower()
-    end
-    noctalia.notify(tr_color_picker, tr("color_picked", { color = copyText }))
-    setSelected(color, noctalia.state.get("selectedOpacity") or 1)
-    pushCurrentColor(color, 1)
+    pushCurrentColor(hex, tonumber(opacityStr) or 1)
     saveHistoryToDisk()
-  end)
+end
 
-  if not accepted then
-    noctalia.notify(tr_color_picker, tr("picker_already_open"))
-  end
+-- Opens Noctalia's native color picker dialog
+local function handleNativePicker()
+    local current = noctalia.state.get("selectedColor") or "#FFFFFF"
+    local accepted = noctalia.openColorPicker(current, function(color)
+        if color == nil then
+        return
+        end
+
+        setSelected(color, noctalia.state.get("selectedOpacity") or 1)
+    end)
+
+    if not accepted then
+        noctalia.notify(tr_color_picker, tr("picker_already_open"))
+    end
 end
 
 function onIpc(event: string, payload: string?)
-  if event == "pick" then
-    handlePick()
-  elseif event == "picker-dialog" then
-    handleNativePicker()
-  elseif event == "pick-panel" then
-    handlePickFromPanel()
-  elseif event == "commit" then
-    handleCommit(payload)
-  end
+    if event == "pick" then
+        handlePick()
+    elseif event == "picker-dialog" then
+        handleNativePicker()
+    elseif event == "pick-panel" then
+        handlePickFromPanel()
+    elseif event == "push-to-history" then
+        handlePushToHistory(payload)
+    elseif event == "save-selected" then
+        saveSelectedToDisk()
+    end
 end
 
 --==============================================
 -- BOOT (runs once at load)
 --==============================================
 
-noctalia.mkdirAll(STATE_DIR)
-loadHistoryFromDisk()
-
-local bootHistory = noctalia.state.get("colorHistory") or {}
-local bootTop = bootHistory[1]
-if bootTop ~= nil then
-  setSelected(bootTop.hex, bootTop.opacity or 1)
+function load()
+    noctalia.mkdirAll(STATE_DIR)
+    loadHistoryFromDisk()
+    loadSelectedFromDisk()
 end
+load()

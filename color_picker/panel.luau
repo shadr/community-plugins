@@ -17,12 +17,13 @@ local SERVICE = "oldirtty/color_picker:service"
 local swatch_radius = noctalia.getConfig("swatch-radius")
 local tr_color_picker = noctalia.tr("color_picker")
 
--- Set right before closing the panel to hand off to hyprpicker (so the
--- panel doesn't cover the screen area being sampled). onClose() checks
--- this to skip committing the stale selection on that technical close,
--- and the selectedColor watch checks it to reopen the panel once the
--- service reports a result -- instead of just re-rendering a closed panel.
+--==============================================
+-- CONTROL VARIABLES
+--==============================================
 local waitingForPanelPick = false
+local initialSessionColor = nil
+local initialSessionOpacity = 1
+local initialChanged = false
 
 --==============================================
 -- TRANSLATION HELPER
@@ -158,78 +159,84 @@ local function parseHexText(text: string): string?
 end
 
 --==============================================
--- STATE (read-only view + pure-UI selection)
---
--- selectedColor / selectedOpacity / colorHistory all live in noctalia.state,
--- owned and mutated by service.luau. This panel only reads them for
--- rendering, except for pure-UI interactions (history swatch click, field
--- edit, opacity drag) that change the *selection* without picking or
--- persisting -- those are cheap enough to set directly here.
---==============================================
-
-local function getSelectedColor(): string?
-  return noctalia.state.get("selectedColor")
-end
-
-local function getSelectedOpacity(): number
-  return tonumber(noctalia.state.get("selectedOpacity")) or 1
-end
-
-local function setSelected(hex: string, opacity: number)
-  noctalia.state.set("selectedColor", hex)
-  noctalia.state.set("selectedOpacity", opacity)
-end
-
---==============================================
 -- SERVICE DISPATCH
 --==============================================
 
 local function sendToService(event: string, payload: string?)
   local cmd = "noctalia msg plugin " .. SERVICE .. " all " .. event
   if payload ~= nil then
-    cmd = cmd .. " " .. payload
+    cmd = cmd .. " '" .. payload .. "'"
   end
   noctalia.runAsync(cmd, function() end)
+end
+
+local function commitInitialColorIfFirstChange(newHex: string?)
+    if initialChanged then return end
+    if initialSessionColor == nil then return end
+    if newHex == nil or newHex == initialSessionColor then return end
+
+    initialChanged = true
+    local payload = initialSessionColor .. ":" .. tostring(initialSessionOpacity)
+    -- noctalia.notify("DEBUG", "Push initial color = ".. initialSessionColor .. "\nOpacity = " .. initialSessionOpacity)
+    sendToService("push-to-history", payload)
+end
+
+--==============================================
+-- STATE (read-only view + pure-UI selection)
+-- These states are synced and persisted to disk by the service on close.
+--==============================================
+
+local function getSelectedColor(): string?
+    return noctalia.state.get("selectedColor")
+end
+
+local function getSelectedOpacity(): number
+    return tonumber(noctalia.state.get("selectedOpacity")) or 1
+end
+
+local function setSelected(hex: string, opacity: number)
+    commitInitialColorIfFirstChange(hex)
+    noctalia.state.set("selectedColor", hex)
+    noctalia.state.set("selectedOpacity", opacity)
 end
 
 --==============================================
 -- RENDERING
 --==============================================
 
-local function renderRecentItem(color: string, index: number)
-  return ui.box({
-    width = 32,
-    height = 32,
-    fill = color,
-    radius = swatch_radius / 2.5,
-    border = "outline",
-    onClick = "onHistoryColorClicked" .. index,
-  })
-end
-
--- Recent-colors row: history positions 2..N. Position 1 is the selected
--- color, already shown by its own preview swatch.
-local function renderRecent()
-  local recent = noctalia.state.get("colorHistory") or {}
-
-  if #recent <= 1 then
-    return ui.label({ text = tr("no_history"), fontSize = 12, color = "muted" })
-  end
-
-  local items = {}
-  for i = #recent, 2, -1 do
-    table.insert(items, renderRecentItem(recent[i].hex, i))
-  end
-
-  return ui.row({ gap = 8, align = "center" }, items)
-end
-
 local function renderTitlebar()
-  return ui.row({ align = "center", justify = "space_between", gap = 8 }, {
-    ui.label({ text = tr("color_picker"), fontSize = 18, fontWeight = "bold", color = "primary", flexGrow = 1 }),
-    ui.button({ glyph = "color-picker", onClick = "onPickClickedFromPanel" }),
-    ui.button({ glyph = "close", onClick = "onCloseClicked" }),
-  })
+    return ui.row({ align = "center", justify = "space_between", gap = 8 }, {
+        ui.label({ text = tr("color_picker"), fontSize = 18, fontWeight = "bold", color = "primary", flexGrow = 1 }),
+        ui.button({ glyph = "color-picker", onClick = "onPickClickedFromPanel" }),
+        ui.button({ glyph = "close", onClick = "onCloseClicked" }),
+    })
+end
+
+local function renderRecentItem(color: string, index: number)
+    return ui.box({
+        width = 32,
+        height = 32,
+        fill = color,
+        radius = swatch_radius / 2.5,
+        border = "outline",
+        onClick = "onHistoryColorClicked" .. index,
+    })
+end
+
+-- Recent-colors row
+function renderRecent()
+    local recent = noctalia.state.get("colorHistory") or {}
+
+    if #recent == 0 then
+        return ui.label({ text = tr("no_history"), fontSize = 12, color = "muted" })
+    end
+
+    local items = {}
+    for i = #recent, 1, -1 do
+        table.insert(items, renderRecentItem(recent[i].hex, i))
+    end
+
+    return ui.row({ gap = 8, align = "center" }, items)
 end
 
 local function renderColorspaceColumn(name: string, value: string, onSubmit: string, onCopy: string, keySuffix: string)
@@ -277,7 +284,7 @@ local function render()
       }),
       ui.column({ gap = 8, flexGrow = 2 }, {
         ui.label({ text = tr("opacity"), fontSize = 14, color = "on_surface_variant" }),
-        ui.slider({ min = 0, max = 1, step = 0.01, value = opacity, onChange = "onOpacityChange", onDragEnd = "onOpacityChange" }),
+        ui.slider({ min = 0, max = 1, step = 0.01, value = opacity, onChange = "onOpacityChange", onDragEnd = "onOpacityDragEnd" }),
       }),
       -- Render current swatch
       ui.box({
@@ -313,12 +320,12 @@ function handleHistoryClick(index: number)
   end
 end
 
+function onHistoryColorClicked1() handleHistoryClick(1) end
 function onHistoryColorClicked2() handleHistoryClick(2) end
 function onHistoryColorClicked3() handleHistoryClick(3) end
 function onHistoryColorClicked4() handleHistoryClick(4) end
 function onHistoryColorClicked5() handleHistoryClick(5) end
 function onHistoryColorClicked6() handleHistoryClick(6) end
-function onHistoryColorClicked7() handleHistoryClick(7) end
 
 --==============================================
 -- CALLBACKS: colorspace fields (pure UI, no service call)
@@ -357,6 +364,16 @@ function onOpacityChange(value)
   render()
 end
 
+function onOpacityDragEnd(value)
+    local parsed = tonumber(value)
+    if parsed == nil then return end
+
+    local currentHex = getSelectedColor()
+    if currentHex then
+        setSelected(currentHex, parsed)
+    end
+end
+
 --==============================================
 -- CALLBACKS: picking (delegates to the service)
 --==============================================
@@ -382,40 +399,40 @@ end
 -- Panel closed. Two cases:
 -- - Technical close to hand off to hyprpicker (waitingForPanelPick): ask
 --   the service to pick now that the close animation is done, then wait
---   for the selectedColor watch to reopen the panel. No commit yet --
---   the selection isn't final until the panel closes for real.
+--   for the selectedColor watch to reopen the panel.
 --
--- - Real close (close button, Esc, click outside): commit whatever is
---   currently selected to the service's history.
+-- - Real close (close button, Esc, click outside): save whatever is
+--   currently selected to the service's SELECTED_FILE.
 function onClose()
 	if waitingForPanelPick then
 		sendToService("pick-panel")
 		return
 	end
-
-	local hex = getSelectedColor()
-	if hex == nil then
-		return
-	end
-
-	local payload = hex .. ":" .. tostring(getSelectedOpacity())
-	sendToService("commit", payload)
+	sendToService("save-selected")
 end
 
 function onOpen(context)
-	-- Wait user pick a color to render panel
-	-- when launching hyprpicker from panel's button
-	noctalia.state.watch("selectedColor", function()
-		if waitingForPanelPick then
-			waitingForPanelPick = false
-			noctalia.togglePanel("oldirtty/color_picker:panel")
-		else
-			render()
-		end
-	end)
+    initialChanged = false
+    initialSessionColor = getSelectedColor()
+    initialSessionOpacity = getSelectedOpacity()
 
-	noctalia.state.watch("colorHistory", function()
-		render()
-	end)
-	render()
+    noctalia.state.watch("selectedColor", function(newHex: string?)
+        if waitingForPanelPick then
+        waitingForPanelPick = false
+        noctalia.togglePanel("oldirtty/color_picker:panel")
+        return
+        end
+
+        -- Covers changes the service made directly (panel pick button, native
+        -- picker dialog), which bypass this panel's setSelected().
+        commitInitialColorIfFirstChange(newHex)
+
+        render()
+    end)
+
+    noctalia.state.watch("colorHistory", function()
+        render()
+    end)
+
+    render()
 end
