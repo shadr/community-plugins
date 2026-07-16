@@ -14,6 +14,7 @@ from typing import Any
 DEFAULT_ROOT = Path(__file__).resolve().parents[2]
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 LAUNCHER_PREFIX_RE = re.compile(r"^[a-z]+$")
+DESCRIPTION_MAX_CHARS = 120
 ALLOWED_TAGS = {
     "ai",
     "animation",
@@ -475,6 +476,18 @@ class Validator:
                     f"tags[{index}] '{tag}' is not an allowed tag",
                 )
 
+    def validate_description(self, manifest_path: Path, value: Any) -> None:
+        if not is_non_empty_string(value):
+            return
+
+        length = len(value)
+        if length > DESCRIPTION_MAX_CHARS:
+            self.add_error(
+                manifest_path,
+                f"root field 'description' is {length} characters; "
+                f"keep catalog descriptions at or below {DESCRIPTION_MAX_CHARS}",
+            )
+
     def validate_root_fields(self, manifest_path: Path, manifest: dict[str, Any]) -> None:
         unknown = sorted(set(manifest) - ROOT_FIELDS)
         for field in unknown:
@@ -501,6 +514,9 @@ class Validator:
 
         if "tags" in manifest:
             self.validate_tags(manifest_path, manifest["tags"])
+
+        if "description" in manifest:
+            self.validate_description(manifest_path, manifest["description"])
 
         if "deprecated" in manifest and not isinstance(manifest["deprecated"], bool):
             self.add_error(manifest_path, "root field 'deprecated' must be a bool")

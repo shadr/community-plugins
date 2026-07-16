@@ -66,6 +66,27 @@ class AllowedTagsTests(unittest.TestCase):
         self.assertTrue(any("tags[2] must be a non-empty string" in error for error in errors))
 
 
+class DescriptionTests(unittest.TestCase):
+    def validate_description(self, description: object) -> list[str]:
+        validator = validate_plugins.Validator(Path("/repo"))
+        validator.validate_description(Path("/repo/example/plugin.toml"), description)
+        return validator.errors
+
+    def test_accepts_description_at_limit(self) -> None:
+        self.assertEqual(
+            self.validate_description("x" * validate_plugins.DESCRIPTION_MAX_CHARS),
+            [],
+        )
+
+    def test_rejects_description_over_limit(self) -> None:
+        errors = self.validate_description(
+            "x" * (validate_plugins.DESCRIPTION_MAX_CHARS + 1)
+        )
+        self.assertEqual(len(errors), 1)
+        self.assertIn("is 121 characters", errors[0])
+        self.assertIn("at or below 120", errors[0])
+
+
 class PluginConfigAccessorTests(unittest.TestCase):
     def test_accepts_universal_accessor(self) -> None:
         self.assertEqual(
