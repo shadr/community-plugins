@@ -146,20 +146,20 @@ function checkGenerations()
     setState("lastGenerationsCheckTime", os.time())
 
     noctalia.runAsync(nixosGenerationsCmd, function(result)
-        setState("nixosGenerations", result.stdout)
+        setState("nixosGenerations", noctalia.string.trim(result.stdout))
     end)
 
     noctalia.runAsync(nixosCurrentGenCmd, function(result)
-        setState("nixosCurrentGen", result.stdout)
+        setState("nixosCurrentGen", noctalia.string.trim(result.stdout))
     end)
 
     if getState("hasHomeManager") then
         noctalia.runAsync(hmGenerationsCmd, function(result)
-            setState("hmGenerations", result.stdout)
+            setState("hmGenerations", noctalia.string.trim(result.stdout))
         end)
 
         noctalia.runAsync(hmCurrentGenCmd, function(result)
-            setState("hmCurrentGen", result.stdout)
+            setState("hmCurrentGen", noctalia.string.trim(result.stdout))
         end)
     end
 end

@@ -110,7 +110,8 @@ local function render()
         statLabel(`{tr("panel.current")}: {getState("nixosCurrentGen")}`, "device-desktop-check")
     }
 
-    if getState("hasHomeManager") then
+    if getState("hasHomeManager") and getState("hmGenerations") ~= ""
+        and getState("hmCurrentGen") ~= "" then
         table.insert(generationItems,
             statLabel(`HM: {getState("hmGenerations")}`, "home")
         )
