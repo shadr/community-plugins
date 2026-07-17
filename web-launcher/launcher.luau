@@ -29,13 +29,25 @@ local function extractDomain(url)
 end
 
 local function faviconUrl(domain)
-    return "https://www.google.com/s2/favicons?sz=64&domain=" .. noctalia.string.urlEncode(domain)
+    local provider = noctalia.getConfig("icon_provider")
+    local encoded = noctalia.string.urlEncode(domain)
+
+    if provider == "duckduckgo" then
+        return "https://icons.duckduckgo.com/ip3/" .. encoded .. ".ico"
+    elseif provider == "direct" then
+        return "https://" .. domain .. "/favicon.ico"
+    else
+        return "https://www.google.com/s2/favicons?sz=64&domain=" .. encoded
+    end
 end
 
 local function faviconCachePath(domain)
+    local provider = noctalia.getConfig("icon_provider")
+
     local dir = noctalia.pluginDir() .. "/cache"
     local safe = domain:gsub("[^%w%.%-]", "_")
-    local path = dir .. "/" .. safe .. ".png"
+
+    local path = dir .. "/" .. safe .. "_" .. provider .. ".png"
     return path, dir
 end
 

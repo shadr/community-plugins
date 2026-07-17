@@ -7,6 +7,13 @@
         "notify": {
             "label": "Notify",
             "description": "Notify when opening link."
+        },
+        "icon_provider": {
+            "label": "Icon Provider",
+            "description": "Icon download source.",
+            "google": "Google",
+            "duckduckgo": "DuckDuckGo",
+            "direct": "Site's own favicon.ico"
         }
     }
 }

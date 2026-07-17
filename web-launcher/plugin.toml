@@ -33,3 +33,15 @@ type = "bool"
 label_key = "settings.notify.label"
 description_key = "settings.notify.description"
 default = true
+
+[[setting]]
+key = "icon_provider"
+type = "select"
+label_key = "settings.icon_provider.label"
+description_key = "settings.icon_provider.description"
+default = "google"
+options = [
+    { value = "google", label_key = "settings.icon_provider.google" },
+    { value = "duckduckgo", label_key = "settings.icon_provider.duckduckgo" },
+    { value = "direct", label_key = "settings.icon_provider.direct" },
+]

@@ -26,6 +26,7 @@ You can customize the list and order of websites in settings.
 | --- | --- | --- | --- |
 | `links` | `string_list` | `see below` | Websites list and order. |
 | `notify` | `bool` | `false` | Toggle notification when launching website. |
+| `icon_provider` | `select` | `google` | Icon download source. |
 
 Default links:
 ```
