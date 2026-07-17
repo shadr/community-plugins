@@ -195,3 +195,14 @@ icon = "search"
 description = "Search files and folders as you type, fuzzy-matched with fzf; open results with the system MIME association."
 plugin_api = 3
 tags = ["bar", "launcher", "panel", "utility", "productivity"]
+
+[[plugin]]
+id = "h465855hgg/lyrics"
+name = "Lyrics"
+version = "1.1.0"
+author = "h465855hgg"
+license = "MIT"
+icon = "music"
+description = "Synchronized lyrics with karaoke highlighting, animated transitions, and flexible lyric sources."
+plugin_api = 3
+tags = ["bar", "service", "music", "media", "animation"]
