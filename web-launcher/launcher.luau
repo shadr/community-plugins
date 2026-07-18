@@ -117,7 +117,7 @@ function onActivate(id)
     if noctalia.getConfig("notify") then
         noctalia.notify(
             noctalia.tr("notify.title"),
-            noctalia.tr("notify.message") .. " " .. id
+            noctalia.tr("notify.message", { name = id })
         )
     end
 end
