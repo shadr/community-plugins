@@ -1,4 +1,4 @@
-# Noctalia Lyrics 1.4.0
+# Noctalia Lyrics 1.4.1
 
 Synchronized lyrics for the Noctalia bar, with multiple MPRIS players,
 translation and romanization layers, configurable sources, karaoke highlighting,
@@ -59,6 +59,7 @@ noctalia plugins lint lyrics
 sh lyrics/scripts/setup-deps.sh --check
 cd lyrics
 python3 -m py_compile lyric_sources.py krc_decode.py lrclib_lyric.py
+python3 -m unittest test_lyric_sources.py
 ```
 
 ## Lyrics model
@@ -85,6 +86,10 @@ IDs are:
 - `lrclib`: public LRCLIB search.
 - `netease`: public NetEase search, synchronized lyrics, translations, and
   romanization when returned.
+- `splayer`: SPlayer's complete current lyric data, including line and word
+  timing, translations, romanization, background lines, and duet markers.
+  SPlayer must be running; the default API URL is `http://127.0.0.1:25884`.
+  Changing this URL sends current track metadata to the configured service.
 - `qqmusic`: public QQ Music search and lyric endpoint.
 - `kugou`: public Kugou search and lyric download endpoint.
 - `qishui`: user-configured HTTP endpoint supporting `{title}`, `{artist}`, and
