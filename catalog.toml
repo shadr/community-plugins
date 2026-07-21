@@ -350,3 +350,15 @@ icon = "keyboard"
 description = "View, create, organize, and edit Hyprland, Niri, and MangoWC keybindings."
 plugin_api = 5
 tags = ["bar", "panel", "service", "hyprland", "niri", "mangowc", "productivity", "utility"]
+
+[[plugin]]
+id = "gustav0ar/drive-health"
+name = "Drive Health"
+version = "1.2.0"
+author = "Drive Health contributors"
+license = "MIT"
+icon = "server-2"
+description = "SMART health, temperature, integrity, endurance, and storage monitoring for SSDs and hard drives."
+deprecated = false
+plugin_api = 3
+tags = ["bar", "panel", "service", "system", "hardware", "utility"]
